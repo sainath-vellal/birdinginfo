@@ -9,7 +9,6 @@ import pdb
 
 DISTANCE = 3
 
-cdic = defaultdict(lambda: 0)
 gen_dict = defaultdict(lambda: 0)
 gen_dict_p = defaultdict(lambda: 0)
 sp_dict = defaultdict(lambda: 0)
@@ -17,6 +16,13 @@ sp_dict_p = defaultdict(lambda: 0)
 prob_dict = defaultdict(lambda:0)
 dic_p = {}
 p_to_s = {}
+
+def reset_data():
+	gen_dict = defaultdict(lambda: 0)
+	gen_dict_p = defaultdict(lambda: 0)
+	sp_dict = defaultdict(lambda: 0)
+	sp_dict_p = defaultdict(lambda: 0)
+	prob_dict = defaultdict(lambda:0)
 
 
 def plural(word):
@@ -48,8 +54,8 @@ def generate_report():
 	for i in gen_birds:
 		print i
 	print "------------Probable bird sightings-------\n"
-	for i in prob_dict.keys():
-		print i 
+	for x,y in prob_dict.items():
+		print x,"-->",y 
 	#pdb.set_trace()
 
 def build_dic_words():
@@ -57,6 +63,7 @@ def build_dic_words():
 	blist = fp.read()
 	fp.close()
 	words = [l.strip().lower() for l in blist.splitlines()]
+	#pdb.set_trace()
 	for j in [w.split() for w in words]:
 
 		#pdb.set_trace()
@@ -153,6 +160,7 @@ def process_single_message(ctr, depth=0,sent={}):
 	(jw,w) = extract_original_message(text,sent)
 	process_text(jw)
 	generate_report()
+	reset_data()
 	#pdb.set_trace()
 	for c in ctr.children:
 		#pdb.set_trace()
@@ -167,7 +175,6 @@ def search_dict_3(words):
 				if [x,y,z] == l:
 					#print "Found: %s %s %s" %(x,y,z)
 					sp_dict[(x,y,z)] += 1
-					break
 				elif [x,y] == l:
 					#print "Found: %s %s"%(x,y)
 					sp_dict[(x,y)] +=1
@@ -182,20 +189,19 @@ def search_dict_3(words):
 				else:
 					if nltk.metrics.distance.edit_distance(' '.join([x,y,z]),' '.join(l)) <= DISTANCE:
 						#print "Probable bird name Found!! %s %s %s -> %s "%(x,y,z,l)
-						prob_dict[(x,y,z)] += 1
+						prob_dict[(x,y,z)] = (l,1)
 					elif nltk.metrics.distance.edit_distance(' '.join([x,y]),' '.join(l)) <= DISTANCE:
 						#print "Probable bird name Found!! %s %s -> %s "%(x,y,l)
-						prob_dict[(x,y)] += 1
+						prob_dict[(x,y)] = (l,1)
 					elif nltk.metrics.distance.edit_distance(' '.join([y,z]),' '.join(l)) <= DISTANCE:
 						#print "Probable bird name Found!! %s %s -> %s "%(y,z,l)
-						prob_dict[(y,z)] += 1
+						prob_dict[(y,z)] = (l,1)
 						
 		elif dic_p.has_key(z):
 			for l in dic_p[z]:
 				if [x,y,z] == l:
 					#print "Found: %s %s %s" %(x,y,z)
 					sp_dict[(x,y,z)] += 1
-					break
 				elif [x,y] == l:
 					#print "Found: %s %s"%(x,y)
 					sp_dict[(x,y)] +=1
@@ -210,13 +216,13 @@ def search_dict_3(words):
 				else:
 					if nltk.metrics.distance.edit_distance(' '.join([x,y,z]),' '.join(l)) <= DISTANCE:
 						#print "Probable bird name Found!! %s %s %s -> %s "%(x,y,z,l)
-						prob_dict[(x,y,z)] += 1
+						prob_dict[(x,y,z)] = (l,1)
 					elif nltk.metrics.distance.edit_distance(' '.join([x,y]),' '.join(l)) <= DISTANCE:
 						#print "Probable bird name Found!! %s %s -> %s "%(x,y,l)
-						prob_dict[(x,y)] += 1
+						prob_dict[(x,y)] = (l,1)
 					elif nltk.metrics.distance.edit_distance(' '.join([y,z]),' '.join(l)) <= DISTANCE:
 						#print "Probable bird name Found!! %s %s -> %s "%(y,z,l)
-						prob_dict[(y,z)] += 1
+						prob_dict[(y,z)] = (l,1)
 			
 def filter_text(text):
 	t = re.sub(r'\r\n',r' ',text)
@@ -234,7 +240,7 @@ def process_text(text=None):
 	text = filter_text(text)
 	words = nltk.word_tokenize(text)
 	#pdb.set_trace()
-	tgrams = [w for w in nltk.trigrams(words)]
+	tgrams = [w for w in nltk.ngrams(words,3)]
 	search_dict_3(tgrams)
 	
 	#search_dict_new_3(tgrams)
