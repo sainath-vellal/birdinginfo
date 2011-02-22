@@ -7,7 +7,7 @@ import json
 
 import pdb
 
-DISTANCE = 3
+DISTANCE = 2 
 
 gen_dict = defaultdict(lambda: 0)
 gen_dict_p = defaultdict(lambda: 0)
@@ -18,11 +18,12 @@ dic_p = {}
 p_to_s = {}
 
 def reset_data():
-	gen_dict = defaultdict(lambda: 0)
-	gen_dict_p = defaultdict(lambda: 0)
-	sp_dict = defaultdict(lambda: 0)
-	sp_dict_p = defaultdict(lambda: 0)
-	prob_dict = defaultdict(lambda:0)
+
+	gen_dict.clear() 
+	gen_dict_p.clear()
+	sp_dict.clear()
+	sp_dict_p.clear()
+	prob_dict.clear()
 
 
 def plural(word):
