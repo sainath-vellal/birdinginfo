@@ -3,27 +3,80 @@ import jwzthreading as jwz
 import nltk
 from nltk.corpus import stopwords
 from collections import defaultdict
+import json
 
 import pdb
 
-DISTANCE = 2
+DISTANCE = 3
 
 cdic = defaultdict(lambda: 0)
+gen_dict = defaultdict(lambda: 0)
+gen_dict_p = defaultdict(lambda: 0)
+sp_dict = defaultdict(lambda: 0)
+sp_dict_p = defaultdict(lambda: 0)
+prob_dict = defaultdict(lambda:0)
+dic_p = {}
+p_to_s = {}
+
+
+def plural(word):
+    if word.endswith('y'):
+        return word[:-1] + 'ies'
+    elif word[-1] in 'sx' or word[-2:] in ['sh', 'ch']:
+        return word + 'es'
+    elif word.endswith('an'):
+        return word[:-2] + 'en'
+    return word + 's'
+
+def generate_report():
+	gen_birds = gen_dict.keys()
+	gb=[]
+	for i in gen_birds:
+		if p_to_s.has_key(i):
+			gb.append(p_to_s[i])
+		else:
+			gb.append(i)
+
+	sp_birds = [x[-1] for x in sp_dict.keys()]
+
+	gen_birds = [i for i in set(gb) - set(gb).intersection(set(sp_birds))]
+	
+	print "--------------Specific birds-------------\n"
+	for i in sp_dict.keys():
+		print i
+	print "-------------Generic birds--------------\n"
+	for i in gen_birds:
+		print i
+	print "------------Probable bird sightings-------\n"
+	for i in prob_dict.keys():
+		print i 
+	#pdb.set_trace()
 
 def build_dic_words():
 	fp = open('BigBirdList.csv')
 	blist = fp.read()
 	fp.close()
 	words = [l.strip().lower() for l in blist.splitlines()]
-	#uniq_last_words = [l for l in set([j[-1] for j in [w.split() for w in words] ])]
 	for j in [w.split() for w in words]:
-		for i in j:
-			cdic[i]=1
 
-		if dic.has_key(j[-1]) == True:
+		#pdb.set_trace()
+		if dic.has_key(j[-1]):
 			dic[j[-1]].append(j)
 		else:
 			dic[j[-1]] = [j,[j[-1]]]
+		
+		p = plural(j[-1])
+		k = []
+		k.extend(j) #right way to copy a list :-) 	
+		if dic_p.has_key(p):
+			k[-1]= p
+			dic_p[p].append(k)
+		else:
+			k[-1] = p
+			dic_p[p] = [k,[p]]
+			p_to_s[p] = j[-1]
+
+
 
 
 def prune_text(text, sent):
@@ -49,7 +102,8 @@ def extract_original_message(text,sent):
 	#we have the entire text and unique sentence hash from the parent thread.
 	#lets hash the text and build a diff of sent and text
 	#pdb.set_trace()
-	text = """ My first posting to this group. Apologies if this is too mundane.
+	"""
+	text = My first posting to this group. Apologies if this is too mundane.
 	 
 	 We and the family had gone to Melukote yesterday and we spotted quite a few birds yesterday on Mandya to Melukote road. Particularly happy about the Hornbills.... and about the White throated Kingfisher photo attached!
 	  
@@ -98,42 +152,72 @@ def process_single_message(ctr, depth=0,sent={}):
 	
 	(jw,w) = extract_original_message(text,sent)
 	process_text(jw)
-
+	generate_report()
 	#pdb.set_trace()
 	for c in ctr.children:
 		#pdb.set_trace()
 		process_single_message(c, depth+1, sent)
 
-
+#XXX: make it 4grams
 def search_dict_3(words):
-	pdb.set_trace()
-	skip_cnt = 0
+	#pdb.set_trace()
 	for x,y,z in words:
-		if skip_cnt > 0:
-			skip_cnt-=1
-			continue
 		if dic.has_key(z):
 			for l in dic[z]:
 				if [x,y,z] == l:
-					print "Found: %s %s %s" %(x,y,z)
-					#skip_cnt=2
+					#print "Found: %s %s %s" %(x,y,z)
+					sp_dict[(x,y,z)] += 1
+					break
 				elif [x,y] == l:
-					print "Found: %s %s"%(x,y)
+					#print "Found: %s %s"%(x,y)
+					sp_dict[(x,y)] +=1
 					#skip_cnt=1
 				elif [y,z] == l:
-					print "Found: %s %s"%(y,z)
+					#print "Found: %s %s"%(y,z)
+					sp_dict[(y,z)] +=1
 					#skip_cnt=1
 				elif [z] == l:
-					print "Found: %s"%(z)
+					#print "Found: %s"%(z)
+					gen_dict[z] += 1
 				else:
 					if nltk.metrics.distance.edit_distance(' '.join([x,y,z]),' '.join(l)) <= DISTANCE:
-						print "Probable bird name Found!! %s %s %s -> %s "%(x,y,z,l)
+						#print "Probable bird name Found!! %s %s %s -> %s "%(x,y,z,l)
+						prob_dict[(x,y,z)] += 1
 					elif nltk.metrics.distance.edit_distance(' '.join([x,y]),' '.join(l)) <= DISTANCE:
-						print "Probable bird name Found!! %s %s -> %s "%(x,y,l)
+						#print "Probable bird name Found!! %s %s -> %s "%(x,y,l)
+						prob_dict[(x,y)] += 1
 					elif nltk.metrics.distance.edit_distance(' '.join([y,z]),' '.join(l)) <= DISTANCE:
-						print "Probable bird name Found!! %s %s -> %s "%(y,z,l)
-
-
+						#print "Probable bird name Found!! %s %s -> %s "%(y,z,l)
+						prob_dict[(y,z)] += 1
+						
+		elif dic_p.has_key(z):
+			for l in dic_p[z]:
+				if [x,y,z] == l:
+					#print "Found: %s %s %s" %(x,y,z)
+					sp_dict[(x,y,z)] += 1
+					break
+				elif [x,y] == l:
+					#print "Found: %s %s"%(x,y)
+					sp_dict[(x,y)] +=1
+					#skip_cnt=1
+				elif [y,z] == l:
+					#print "Found: %s %s"%(y,z)
+					sp_dict[(y,z)] +=1
+					#skip_cnt=1
+				elif [z] == l:
+					#print "Found: %s"%(z)
+					gen_dict[z] += 1
+				else:
+					if nltk.metrics.distance.edit_distance(' '.join([x,y,z]),' '.join(l)) <= DISTANCE:
+						#print "Probable bird name Found!! %s %s %s -> %s "%(x,y,z,l)
+						prob_dict[(x,y,z)] += 1
+					elif nltk.metrics.distance.edit_distance(' '.join([x,y]),' '.join(l)) <= DISTANCE:
+						#print "Probable bird name Found!! %s %s -> %s "%(x,y,l)
+						prob_dict[(x,y)] += 1
+					elif nltk.metrics.distance.edit_distance(' '.join([y,z]),' '.join(l)) <= DISTANCE:
+						#print "Probable bird name Found!! %s %s -> %s "%(y,z,l)
+						prob_dict[(y,z)] += 1
+			
 def filter_text(text):
 	t = re.sub(r'\r\n',r' ',text)
 	t = re.sub(r'\n',r' ',t)
@@ -149,7 +233,7 @@ def filter_text(text):
 def process_text(text=None):
 	text = filter_text(text)
 	words = nltk.word_tokenize(text)
-	pdb.set_trace()
+	#pdb.set_trace()
 	tgrams = [w for w in nltk.trigrams(words)]
 	search_dict_3(tgrams)
 	
@@ -158,7 +242,6 @@ def process_text(text=None):
 	
 #fi = os.path.join(os.getcwd(),"test file .gg")
 
-birdlist = dict()
 dic = dict()
 build_dic_words()
 
@@ -167,7 +250,7 @@ files = glob.glob('/root/bngbirds-data/bngbirds/*.eml')
 #files = glob.glob('/home/sainath/try_email/*.eml')
 msglist = []
 
-for file in files[:10]:
+for file in files[:100]:
 #        print '\n'
 	fp = open(file,'r')
 	msg = email.message_from_file(fp)
@@ -190,7 +273,3 @@ for subj, container in L:
 	sent={}
 	depth=0
 	process_single_message(container,depth,sent)
-"""
-t = threadMessages.jwzThread(msglist)
-printSubjects(t)
-"""
