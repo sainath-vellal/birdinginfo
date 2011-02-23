@@ -1,3 +1,8 @@
+Pre-requisites -- 
+1.jwzthreading http://www.amk.ca/python/code/jwz
+	1.1 After installing this, you will need a patch from me to make the threading work properly. 
+2.nltk http://nltk.googlecode.com
+
 1. untar mail.tar.gz in the current working directory
 2. run birdnames.py
 3. do not use try.py :-)
