@@ -7,7 +7,7 @@ import json
 
 import pdb
 
-DISTANCE = 2 
+DISTANCE = 3 
 
 gen_dict = defaultdict(lambda: 0)
 gen_dict_p = defaultdict(lambda: 0)
@@ -110,7 +110,8 @@ def extract_original_message(text,sent):
 	#we have the entire text and unique sentence hash from the parent thread.
 	#lets hash the text and build a diff of sent and text
 	#pdb.set_trace()
-	text = """My first posting to this group. Apologies if this is too mundane.
+	"""	
+	text = My first posting to this group. Apologies if this is too mundane.
 	 
 	 We and the family had gone to Melukote yesterday and we spotted quite a few birds yesterday on Mandya to Melukote road. Particularly happy about the Hornbills.... and about the White throated Kingfisher photo attached!
 	  
@@ -136,7 +137,6 @@ def extract_original_message(text,sent):
 	  19. Pond herons
 	  20. Cormorants  
 	  """
-	pdb.set_trace()
 	prune_text(text, sent)
 	split_words = [d for d in sent.itervalues()]
 	joined_words = ' '.join(split_words)
@@ -159,6 +159,7 @@ def process_single_message(ctr, depth=0,sent={}):
                 text = msg.get_payload(decode=True)
 	
 	(jw,w) = extract_original_message(text,sent)
+	#pdb.set_trace()
 	process_text(jw)
 	generate_report()
 	reset_data()
