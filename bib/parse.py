@@ -1,12 +1,15 @@
 import re,pdb,codecs
+import simplejson
 import pymongo
 from pymongo import Connection
+from pymongo import son
 
 dic = {}	 
+ll = []
 def parse():
 	text = codecs.open('SouthAsianOrnithology.txt').read()
 	para  = text.split('ER  -')
-	records = [w.split('\r\n') for w in para if w!='']
+	records = [w.split('\n') for w in para if w!='']
 	
 	for i,rec in enumerate(records):
 		lst = {}
@@ -50,16 +53,16 @@ def parse():
 			v = lst['ID'].strip()
 			dic[v] = lst
 	
+	i = 0
 	keys = [[] for i in range(10)]
 	dics = [{} for i in range(10)]
 	vals = [[] for i in range(10)]
-	i = 0
 	for k,v in dic.items():
 		keys[i%10].append(k)
 		vals[i%10].append(v)
 		i += 1
-	#for i in range(10):
-	#	dics[i] = dict(zip(keys[i],vals[i]))
+	for i in range(10):
+		dics[i] = dict(zip(keys[i],vals[i]))
 
 
 	conn = Connection()

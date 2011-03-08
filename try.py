@@ -109,7 +109,7 @@ def prune_text(text, sent):
 def extract_original_message(text,sent):
 	#we have the entire text and unique sentence hash from the parent thread.
 	#lets hash the text and build a diff of sent and text
-	#pdb.set_trace()
+	pdb.set_trace()
 	"""	
 	text = My first posting to this group. Apologies if this is too mundane.
 	 
