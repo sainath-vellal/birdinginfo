@@ -139,10 +139,7 @@ def get_word_instances(w,maxw):
 	ll = []
 	for (x,y,z) in l:
 		split = sentences[x].splitlines()
-		try:
-			sen = split[y]	
-		except:
-			pdb.set_trace()
+		sen = split[y]	
 		j1 = reg_remove_special_chars.sub(r' ',sen)
 		j2 = nltk.word_tokenize(j1)
 		jj = j2[lb(z-maxw):z+1]
