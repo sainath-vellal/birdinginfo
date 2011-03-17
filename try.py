@@ -16,6 +16,25 @@ sp_dict_p = defaultdict(lambda: 0)
 prob_dict = defaultdict(lambda:0)
 dic_p = {}
 p_to_s = {}
+sentences = []
+dic = defaultdict(lambda:{}) 
+
+report_words = []
+word_to_sent = defaultdict(lambda: [])
+reg_remove_special_chars = re.compile(r'[^a-zA-Z]')
+reg_remove_special_chars_without_nl = re.compile(r'[^a-zA-Z\n,]')
+
+def lb(x):
+	if x<0:
+		return 0
+	else:
+		return x
+
+def ub(x,l):
+	if x>l:
+	 	return l
+	else:
+		return x
 
 def reset_data():
 
@@ -26,6 +45,10 @@ def reset_data():
 	prob_dict.clear()
 
 
+def convert_lower(text):
+	ws = nltk.word_tokenize(text)
+	return  ' '.join([''.join(s.lower()) for s in ws ])
+	
 def plural(word):
     if word.endswith('y'):
         return word[:-1] + 'ies'
@@ -57,21 +80,21 @@ def generate_report():
 	print "------------Probable bird sightings-------\n"
 	for x,y in prob_dict.items():
 		print x,"-->",y 
-	#pdb.set_trace()
 
 def build_dic_words():
 	fp = open('BigBirdList.csv')
 	blist = fp.read()
 	fp.close()
 	words = [l.strip().lower() for l in blist.splitlines()]
-	#pdb.set_trace()
 	for j in [w.split() for w in words]:
-
-		#pdb.set_trace()
-		if dic.has_key(j[-1]):
-			dic[j[-1]].append(j)
-		else:
-			dic[j[-1]] = [j,[j[-1]]]
+		for i in range(len(j)):
+			hsh = ''.join(sorted(''.join(j[i:])))
+			dic[j[-1]][hsh] = ' '.join(j[i:])
+			if dic[j[-1]].has_key('len'):
+				if (dic[j[-1]]['len'] < len(j)-1):
+					dic[j[-1]]['len'] = len(j)-1
+			else:
+				dic[j[-1]]['len'] = len(j)-1
 		
 		p = plural(j[-1])
 		k = []
@@ -86,57 +109,50 @@ def build_dic_words():
 
 
 
+def build_word_to_sent_map(text = None):
+	text1 = ' '.join([i.lower() for i in text.split(' ')])	
+	tex = nltk.sent_tokenize(text1)
+	for sent_num,te in enumerate(tex):
+		t = te.splitlines()	
+		for sp_num,j in enumerate(t):
+			j1 = reg_remove_special_chars.sub(r' ',j)
+			j2 = nltk.word_tokenize(j1)
+			for index,k in enumerate(j2):
+				if len(k)>2 and k not in stopwords.words('english'):
+					word_to_sent[k].append((sent_num,sp_num, index))
+
+	tex1 = []
+	for te in tex:
+		tex1.append(reg_remove_special_chars_without_nl.sub(r' ',te))
+	return tex1
 
 def prune_text(text, sent):
-	t = text.splitlines()
-	#put the split lines into a dictionary with its hash.
-	for a in t:
-		if a == '':
-			continue
-		if a.startswith('>'):
-			#print "Reply text found! ignoring %s"%a
-			continue
-		p_text = ''.join(sorted(re.sub(r'[^a-zA-Z]',r'',a).lower()))
-		if p_text == '':
-			continue
-		if sent.has_key(p_text):
-			#print "Duplicate text found!!! %s ignoring %s"% (sent[p_text],a)
-			continue
-		else:
-			sent[p_text] = a
+	pdb.set_trace()
+	global sentences 
+	sentences = build_word_to_sent_map(text)
+	tex = nltk.sent_tokenize(text)
+	#tex1 = re.sub(r'[^a-zA-Z]',r' ',text).lower()
+	#w = nltk.word_tokenize(tex1)
+	for i,t in enumerate(tex):
+
+		t = text.splitlines()
+		#put the split lines into a dictionary with its hash.
+		for a in t:
+			if a == '' or  a.startswith('>'):
+				continue
+			p_text = ''.join(sorted(re.sub(r'[^a-zA-Z]',r'',a).lower()))
+			if p_text == '':
+				continue
+			if sent.has_key(p_text):
+				#print "Duplicate text found!!! %s ignoring %s"% (sent[p_text],a)
+				continue
+			else:
+				sent[p_text] = a
 
 
 def extract_original_message(text,sent):
 	#we have the entire text and unique sentence hash from the parent thread.
 	#lets hash the text and build a diff of sent and text
-	pdb.set_trace()
-	"""	
-	text = My first posting to this group. Apologies if this is too mundane.
-	 
-	 We and the family had gone to Melukote yesterday and we spotted quite a few birds yesterday on Mandya to Melukote road. Particularly happy about the Hornbills.... and about the White throated Kingfisher photo attached!
-	  
-	  Bird list 
-	  1. Malabar Grey hornbill
-	  2. Indian Grey hornbill (spotted in 2 different locations)
-	  3. Indian roller (quite a few)
-	  4. White throated Kingfisher (many many..)
-	  5. purple rumped sunbird
-	  6. Red Junglefowl
-	  7. Hoopoe
-	  8. Green Bee-eater
-	  9. Blue tailed Bee-eater
-	  10.Greater Coucal
-	  11. Vernal Hanging Parrot
-	  12. Rose Ringed Parakeet
-	  13. Black bellied Tern
-	  14. Black ibis
-	  15. Egret (Greater and Little)
-	  16. Common coot
-	  17. Common moorhen
-	  18. Red wattled Lapwing
-	  19. Pond herons
-	  20. Cormorants  
-	  """
 	prune_text(text, sent)
 	split_words = [d for d in sent.itervalues()]
 	joined_words = ' '.join(split_words)
@@ -168,6 +184,41 @@ def process_single_message(ctr, depth=0,sent={}):
 		#pdb.set_trace()
 		process_single_message(c, depth+1, sent)
 
+def lconcord(text=None):
+	pass	
+
+def search_word_instances(w,maxw):
+	l = word_to_sent[w]
+	ll = []
+	for (x,y,z) in l:
+		split = sentences[x].splitlines()
+		try:
+			sen = split[y]	
+		except:
+			pdb.set_trace()
+		j1 = reg_remove_special_chars.sub(r' ',sen)
+		j2 = nltk.word_tokenize(j1)
+		jj = j2[lb(z-maxw):z+1]
+		jj1 = [jj[i:] for i in range(len(jj)-1)]
+		for k in jj1:
+			if k not in ll:
+				ll.append(k)
+	return ll
+
+def hash_val(x):
+	return ''.join(sorted(''.join(x)))
+
+def search_dict(words):
+	for x in words:
+		if x in dic:
+			lw = search_word_instances(x,dic[x]['len'])
+			for w in lw:
+				hsh = hash_val(w)
+				if hsh in dic[x]:
+					if w not in report_words:
+						report_words.append(w)
+				
+	#look into plurals later			
 #XXX: make it 4grams
 def search_dict_3(words):
 	#pdb.set_trace()
@@ -239,18 +290,20 @@ def filter_text(text):
 
 
 def process_text(text=None):
-	text = filter_text(text)
-	words = nltk.word_tokenize(text)
 	#pdb.set_trace()
-	tgrams = [w for w in nltk.ngrams(words,3)]
-	search_dict_3(tgrams)
+	tex = filter_text(text)
+	words = nltk.word_tokenize(tex)
+	#tgrams = [w for w in nltk.ngrams(words,3)]
+	
+	search_dict(words)
+	print report_words
+	#search_dict_3(tgrams)
 	
 	#search_dict_new_3(tgrams)
 	#search_dict_2(bgrams)
 	
 #fi = os.path.join(os.getcwd(),"test file .gg")
 
-dic = dict()
 build_dic_words()
 
 
@@ -258,7 +311,7 @@ files = glob.glob('/root/bngbirds-data/bngbirds/*.eml')
 #files = glob.glob('/home/sainath/try_email/*.eml')
 msglist = []
 
-for file in files[:100]:
+for file in files[:10]:
 #        print '\n'
 	fp = open(file,'r')
 	msg = email.message_from_file(fp)
