@@ -112,6 +112,8 @@ def extract_original_message(text,sent):
 	return (joined_words)
 				
 
+count = 0
+reg_replace_slashn = re.compile(r'\n')
 def process_single_message(ctr, depth=0,sent={}):
 	if(ctr.message == None):
 		return
@@ -126,6 +128,42 @@ def process_single_message(ctr, depth=0,sent={}):
         else :
                 text = msg.get_payload(decode=True)
 	
+	
+	"""text =  
+	Bird List of Lalbagh(Pictures here:
+	http://bangalorecaptured.com/2011/03/14/birds-and-flowers-again-lalbagh/) :
+
+	Barbet, white cheeked
+	Cormorant, Great
+	Cormorant, Little
+	Crow, Jungle
+	Crow, House
+	Dove, Spotted
+	Drongo, Ashy
+	Drongo, Black
+	Duck, Spot Biled
+	Egret, Little
+	Egret, Cattle*
+	*Flowerpecker, pale billed*
+	Goose, Bar Headed*
+	Heron, Pond
+	Heron, Grey
+	Kingfisher, White throated
+	Kite, Black
+	Kite, Brahminy
+	Koel, Asian (male and female)
+	Moorhen, Purple
+	Mynah, Commmon
+	Mynah, Jungle
+	Oriole, Golden
+	Owlet, Spotted
+	Parakeet, Rose Ringe*d
+	*Sunbird, Purple Rumped
+	Tailorbird, Common
+
+	Thanks,
+	Vaibhav
+	"""
 
 	jw = extract_original_message(text,sent)
 	process_text(jw)
@@ -137,6 +175,7 @@ def process_single_message(ctr, depth=0,sent={}):
 def get_word_instances(w,maxw):
 	l = word_to_sent[w]
 	ll = []
+	locs = []
 	for (x,y,z) in l:
 		split = sentences[x].splitlines()
 		sen = split[y]	
@@ -149,11 +188,14 @@ def get_word_instances(w,maxw):
 		jj2 = [kk[:i+1] for i in range(len(kk))]
 		for k in jj1:
 			if k not in ll:
+				locs.append((x,y,z))
 				ll.append(k)
 		for k in jj2:
 			if k not in ll:
+				locs.append((x,y,z))
 				ll.append(k)
-	return ll
+		
+	return (ll,locs)
 
 def hash_val(x):
 	return ''.join(sorted(''.join(x)))
@@ -162,9 +204,13 @@ def cmp_by_len(w1,w2):
 	return len(w2)-len(w1)
 
 def search_dict(words):
+	locations = set() 
 	for x in words:
 		if x in dic:
-			lw = get_word_instances(x,dic[x]['len'])
+			(lw,loc) = get_word_instances(x,dic[x]['len'])
+			for lo in loc:
+				locations.add(lo)
+			#	locations.append(lo)
 			lw.sort(cmp=cmp_by_len)
 			for w in lw:
 				hsh = hash_val(w)
@@ -175,6 +221,7 @@ def search_dict(words):
 						for i in range(len(w)):
 							seen_word_variations.append(hash_val(w[i:]))
 						break
+	return locations
 
 		
 def filter_text(text):
@@ -183,12 +230,54 @@ def filter_text(text):
 	return ' '.join(t1)
 
 
+def write_to_orig_html_file(sentences):
+	global count
+	t = '\n'.join(sentences)
+	f = open('html/%d_orig.html'%count, "w")
+	t = reg_replace_slashn.sub(r'<br/>',t)
+	f.write(t)
+	f.close()
+
+
+def group_locs_by_sentences(locs):
+	g_dic = defaultdict(lambda:[])
+	for (x,y,z) in locs:
+		g_dic[(x,y)].append(z)
+	return g_dic
+
+def write_to_mod_html_file(sentences,locs,tex):
+	global count
+	g_dic = group_locs_by_sentences(locs)
+	for (x,y) in g_dic.keys():
+		l = g_dic[(x,y)]
+		sen = sentences[x]
+		slash_n_split = sen.splitlines()
+		wds = reg_remove_special_chars.sub(r' ',slash_n_split[y])
+		words = nltk.wordpunct_tokenize(wds)
+		words1 = []
+		for i,wor in enumerate(words):
+			if i in l:
+				wor = """<i style="color:red">"""+wor+"</i>"
+			words1.append(wor)		
+		words = ' '.join(words1)
+		slash_n_split[y] = words
+		sentences[x] = '\n'.join(slash_n_split)
+	t = '\n'.join(sentences)
+
+	f = open('html/%d_mod.html'%count, "w")
+	t = reg_replace_slashn.sub(r'<br/>',t)
+	f.write(t)
+	f.close()
+	count +=1
+
 def process_text(text=None):
 	tex = filter_text(text)
-	#print sorted(tex.split(' ')),len(tex.split(' '))
+	print sorted(tex.split(' ')),len(tex.split(' '))
+	write_to_orig_html_file(sentences)
 	words = nltk.wordpunct_tokenize(tex)
+	locs = search_dict(words)
 	#pdb.set_trace()
-	search_dict(words)
+	write_to_mod_html_file(sentences,locs,tex)
 	print sorted(report_words), len(report_words)
 	
 
@@ -198,7 +287,7 @@ build_dic_words()
 files = glob.glob('/root/bngbirds-data/bngbirds/*.eml')
 msglist = []
 
-for file in files[:100]:
+for file in files[:10]:
 	fp = open(file,'r')
 	msg = email.message_from_file(fp)
 	m = jwz.make_message(msg,file)
