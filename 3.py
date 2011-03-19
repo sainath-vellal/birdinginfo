@@ -129,7 +129,7 @@ def process_single_message(ctr, depth=0,sent={}):
                 text = msg.get_payload(decode=True)
 	
 	
-	"""text =  
+	"""text =   
 	Bird List of Lalbagh(Pictures here:
 	http://bangalorecaptured.com/2011/03/14/birds-and-flowers-again-lalbagh/) :
 
@@ -175,7 +175,6 @@ def process_single_message(ctr, depth=0,sent={}):
 def get_word_instances(w,maxw):
 	l = word_to_sent[w]
 	ll = []
-	locs = []
 	for (x,y,z) in l:
 		split = sentences[x].splitlines()
 		sen = split[y]	
@@ -188,39 +187,42 @@ def get_word_instances(w,maxw):
 		jj2 = [kk[:i+1] for i in range(len(kk))]
 		for k in jj1:
 			if k not in ll:
-				locs.append((x,y,z))
-				ll.append(k)
+				ll.append((k,(x,y,z-(len(k)-1),z,0)))
 		for k in jj2:
 			if k not in ll:
-				locs.append((x,y,z))
-				ll.append(k)
+				ll.append((k,(x,y,z,z+len(k)-1,1)))
 		
-	return (ll,locs)
+	return ll
 
 def hash_val(x):
 	return ''.join(sorted(''.join(x)))
 
 def cmp_by_len(w1,w2):
-	return len(w2)-len(w1)
+	return len(w2[0])-len(w1[0])
 
 def search_dict(words):
 	#locations = set() 
 	locations = [] 
 	for x in words:
 		if x in dic:
-			(lw,loc) = get_word_instances(x,dic[x]['len'])
-			for lo in loc:
+			lw = get_word_instances(x,dic[x]['len'])
+			#for lo in loc:
 			#	locations.add(lo)
-				locations.append(lo)
+			#	locations.append(lo)
 			lw.sort(cmp=cmp_by_len)
 			for w in lw:
-				hsh = hash_val(w)
+				hsh = hash_val(w[0])
 				for key in dic[x].keys():
 					dist = nltk.metrics.edit_distance(hsh,key)
-					if dist < 2  and w not in report_words and hsh not in seen_word_variations:
-						report_words.append(w)
-						for i in range(len(w)):
-							seen_word_variations.append(hash_val(w[i:]))
+					if dist < 2  and w[0] not in report_words and hsh not in seen_word_variations:
+						report_words.append(w[0])
+						(a,b,c,d,e) = w[1]
+						locations.append((a,b,c,d))
+						for i in range(len(w[0])):
+							if e == 0:
+								seen_word_variations.append(hash_val(w[0][i:]))
+							else:
+								seen_word_variations.append(hash_val(w[0][:i]))
 						break
 	return locations
 
@@ -242,26 +244,32 @@ def write_to_orig_html_file(sentences):
 
 def group_locs_by_sentences(locs):
 	g_dic = defaultdict(lambda:[])
-	for (x,y,z) in locs:
-		g_dic[(x,y)].append(z)
+	for (x,y,a,b) in locs:
+		g_dic[(x,y)].append((a,b))
 	return g_dic
+
+def cmp_by_ind(a,b):
+	return a[0]-b[0]
 
 def write_to_mod_html_file(sentences,locs,tex):
 	global count
-	#pdb.set_trace()
 	g_dic = group_locs_by_sentences(locs)
-	for (x,y) in g_dic.keys():
+	ll= []
+	for l in g_dic.keys():
+		ll.append(l)
+	ll.sort(cmp=cmp_by_ind)
+	for (x,y) in ll:
 		l = g_dic[(x,y)]
 		sen = sentences[x]
 		slash_n_split = sen.splitlines()
 		wds = reg_remove_special_chars.sub(r' ',slash_n_split[y])
 		words = nltk.wordpunct_tokenize(wds)
-		words1 = []
-		for i,wor in enumerate(words):
-			if i in l:
-				wor = """<i style="color:red">"""+wor+"</i>"
-			words1.append(wor)		
-		words = ' '.join(words1)
+		l.sort(cmp=cmp_by_ind)
+		for (h,k) in l:
+			words[h] = """<i style="color:red">"""+words[h]
+			words[k] = words[k]+'</i>'
+		
+		words = ' '.join(words)
 		slash_n_split[y] = words
 		sentences[x] = '\n'.join(slash_n_split)
 	t = '\n'.join(sentences)
