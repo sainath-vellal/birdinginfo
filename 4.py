@@ -11,7 +11,7 @@ sentences = []
 dic = defaultdict(lambda:{}) 
 
 seen_word_variations = []
-list_of_birds = []
+list_of_birds = set() 
 report_words = []
 word_to_sent = defaultdict(lambda: [])
 reg_remove_special_chars = re.compile(r'[^a-zA-Z]')
@@ -55,23 +55,21 @@ def build_dic_words():
 	words = [l.strip().lower() for l in blist.splitlines()]
 	words1 = []
 	for j in [w.split() for w in words]:
-		words1.append(j[0:-1]+[plural(j[-1])])
+		#words1.append(j[0:-1]+[plural(j[-1])])
 		words1.append(j)
+		list_of_birds.add(j[-1])
 
 	for j in words1:
-		bird = j[-1]
-		if bird not in list_of_birds:
-			list_of_birds.append(bird)
-			list_of_birds.append(plural(bird))
-		for i in range(len(j)):
-			hsh = ''.join(sorted(''.join(j[i:])))
-			dic[bird][hsh] = ' '.join(j[i:])
-			if dic[bird].has_key('len'):
-				if (dic[bird]['len'] < len(j)-1):
+		for k in j:
+			bird = k
+			for i in range(len(j)):
+				hsh = ''.join(sorted(''.join(j[i:])))
+				dic[bird][hsh] = ' '.join(j[i:])
+				if dic[bird].has_key('len'):
+					if (dic[bird]['len'] < len(j)-1):
+						dic[bird]['len'] = len(j)-1
+				else:
 					dic[bird]['len'] = len(j)-1
-			else:
-				dic[bird]['len'] = len(j)-1
-		
 
 
 
@@ -202,9 +200,11 @@ def cmp_by_len(w1,w2):
 
 def search_dict(words):
 	#locations = set() 
+	words = set(words)
 	locations = [] 
 	for x in words:
 		if x in dic:
+
 			lw = get_word_instances(x,dic[x]['len'])
 			#for lo in loc:
 			#	locations.add(lo)
@@ -215,6 +215,14 @@ def search_dict(words):
 				for key in dic[x].keys():
 					dist = nltk.metrics.edit_distance(hsh,key)
 					if dist < 2  and w[0] not in report_words and hsh not in seen_word_variations:
+						"""
+						valid = False
+						for h in w[0]:
+							if h in list_of_birds:
+								valid = True
+						if valid == False:
+							continue
+						"""
 						report_words.append(w[0])
 						(a,b,c,d,e) = w[1]
 						locations.append((a,b,c,d))
@@ -223,7 +231,6 @@ def search_dict(words):
 								seen_word_variations.append(hash_val(w[0][i:]))
 							else:
 								seen_word_variations.append(hash_val(w[0][:i]))
-						break
 	return locations
 
 		
@@ -282,11 +289,10 @@ def write_to_mod_html_file(sentences,locs,tex):
 
 def process_text(text=None):
 	tex = filter_text(text)
-	print sorted(tex.split(' ')),len(tex.split(' '))
+	print sorted(set(tex.split(' '))),len(set(tex.split(' ')))
 	write_to_orig_html_file(sentences)
 	words = nltk.wordpunct_tokenize(tex)
 	locs = search_dict(words)
-	#pdb.set_trace()
 	write_to_mod_html_file(sentences,locs,tex)
 	print sorted(report_words), len(report_words)
 	
